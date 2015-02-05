@@ -1,0 +1,131 @@
+{- PKD Assignment 3 (Quadtrees), 2014/15
+
+   Prepared by Tjark Weber
+
+   Test cases originally developed by Karl Sundequist B.
+     (karl.sundequist@it.uu.se)
+ -}
+
+{- Group X
+   Student 1 (Linus Frosteryd)
+   Student 2 (Lowe Eklund)
+ -}
+
+import Test.HUnit -- provides testing framework
+
+{- 
+oldestWoman FamilyTree 
+PURPOSE: To identifie the oldest woman in a family tree 
+PRE: True.
+POST: Nothing if there is a Void or only men in the family tree; else Just (name1, year1) of the oldest woman in the family tree. 
+VARIANT: The nodes decrease after each recursive call. 
+Examples: oldestWoman Void = Nothing
+      oldestWoman (Woman "Anna" 1992 Void Void) = Just ("Anna", 1992)
+      oldestWoman (Man "Arn" 1150 Void (Man "Magnus" 1111 Void Void)) = Nothing -}
+data Rectangle = Rect Integer Integer Integer Integer
+  deriving (Eq,Show)
+
+{- TODO: comment according to our Coding Convention -}
+data QuadTree = EmptyQuadTree
+              | Qt Rectangle [Rectangle] [Rectangle]
+                   QuadTree QuadTree QuadTree QuadTree
+  deriving (Eq,Show)
+
+{- TODO: comment according to our Coding Convention -}
+emptyQtree :: Rectangle -> QuadTree 
+emptyQtree extent = (Qt extent [] [] EmptyQuadTree EmptyQuadTree EmptyQuadTree EmptyQuadTree)
+
+{- TODO: comment according to our Coding Convention -}
+insert :: QuadTree -> Rectangle -> QuadTree
+insert = undefined
+
+{- TODO: comment according to our Coding Convention -}
+query :: QuadTree -> Integer -> Integer -> [Rectangle]
+query = undefined
+
+
+-- test cases
+
+{- createQtree e rs
+   PRE: The extent e and all rectangles in rs are non-empty, and the extent
+        contains all rectangles in rs.
+   POST: A quadtree with the extent e containing all rectangles in rs.
+ -}
+createQtree :: Rectangle -> [Rectangle] -> QuadTree
+createQtree e rs = foldl insert (emptyQtree e) rs
+
+test1 = TestCase $ assertBool "non-overlapping rectangles"
+  (let
+    q = createQtree (Rect 0 6 10 0) [Rect 0 2 4 1, Rect 7 5 10 4]
+  in
+    -- testing one point in each of the two rectangles
+    [Rect 0 2 4 1] == query q 2 1 && [Rect 7 5 10 4] == query q 8 4)
+
+test2 = TestCase $ assertBool "overlapping rectangles stored in the same node"
+  (let
+    q = createQtree (Rect 0 6 10 0) [Rect 0 3 10 0, Rect 0 6 3 0]
+    -- testing a point in both of the rectangles
+    result = query q 1 1
+  in
+    result == [Rect 0 3 10 0, Rect 0 6 3 0] ||
+      result == [Rect 0 6 3 0, Rect 0 3 10 0])
+
+test3 = TestCase $ assertBool "overlapping rectangles stored in different nodes"
+  (let
+    q = createQtree (Rect 0 10 10 0) [Rect 4 10 10 6, Rect 8 10 10 8]
+    -- testing a point in both of the rectangles
+    result = query q 9 9
+  in
+    result == [Rect 4 10 10 6, Rect 8 10 10 8] ||
+      result == [Rect 8 10 10 8, Rect 4 10 10 6])
+
+test4 = TestCase $ assertBool "non-overlapping rectangles"
+  (let
+    q = createQtree (Rect 0 6 6 0) [Rect 0 2 2 0, Rect 4 6 6 5]
+  in
+    -- testing a point in neither of the rectangles
+    query q 3 4 == [])
+
+test5 = TestCase $ assertBool "each quadrant"
+  (let
+    qBL = createQtree (Rect 0 5 5 0) [Rect 0 2 2 0]
+    qBR = createQtree (Rect 0 5 5 0) [Rect 3 2 5 0]
+    qTL = createQtree (Rect 0 5 5 0) [Rect 0 5 2 3]
+    qTR = createQtree (Rect 0 5 5 0) [Rect 3 5 5 3]
+    {- getQuads t
+       PRE: True
+       POST: All quadrants of t, in the order in which they appear in the
+             datatype definition; if t is empty, then four empty quadrants.
+     -}
+    getQuads :: QuadTree -> (QuadTree, QuadTree, QuadTree, QuadTree)
+    getQuads EmptyQuadTree = (EmptyQuadTree, EmptyQuadTree, EmptyQuadTree, EmptyQuadTree)
+    getQuads (Qt _ _ _ a b c d) = (a, b, c, d)
+  in
+    -- make sure they work before we dig into them!
+    query qBL 1 1 == [Rect 0 2 2 0] &&
+    query qBR 4 1 == [Rect 3 2 5 0] &&
+    query qTL 1 4 == [Rect 0 5 2 3] &&
+    query qTR 4 4 == [Rect 3 5 5 3] &&
+    -- whether everything except top-left quadrant of qTL is empty
+    let
+      (q1, q2, q3, q4) = getQuads qTL
+    in
+      q1 /= EmptyQuadTree && q2 == EmptyQuadTree && q3 == EmptyQuadTree && q4 == EmptyQuadTree &&
+    -- whether everything except top-right quadrant of qTR is empty
+    let
+      (q1, q2, q3, q4) = getQuads qTR
+    in
+      q1 == EmptyQuadTree && q2 /= EmptyQuadTree && q3 == EmptyQuadTree && q4 == EmptyQuadTree &&
+    -- whether everything except bottom-left quadrant of qBL is empty
+    let
+      (q1, q2, q3, q4) = getQuads qBL
+    in
+      q1 == EmptyQuadTree && q2 == EmptyQuadTree && q3 /= EmptyQuadTree && q4 == EmptyQuadTree &&
+    -- whether everything except bottom-right quadrant of qBR is empty
+    let
+      (q1, q2, q3, q4) = getQuads qBR
+    in
+      q1 == EmptyQuadTree && q2 == EmptyQuadTree && q3 == EmptyQuadTree && q4 /= EmptyQuadTree)
+
+-- for running all the tests
+runtests = runTestTT $ TestList [test1, test2, test3, test4, test5]
